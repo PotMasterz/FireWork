@@ -1,7 +1,76 @@
 // ===================== FWI / FFMC CALCULATIONS =====================
 
+function getRainCode(rainfall) {
+    if (rainfall < 2.9) return 0;
+    if (rainfall < 4.7) return 1;
+    if (rainfall < 6.3) return 2;
+    if (rainfall < 7.9) return 3;
+    return 4;
+}
+
+function calculateISI(ffmc, windspeed) {
+    return -0.2398 + (1.9590 * ffmc) + (-0.0713 * ffmc) + (0.0441 * ffmc) + (0.1012 * ffmc) +
+           (0.0467 * ffmc) + (-0.0848 * ffmc) + (0.1675 * ffmc) + (-0.1852 * ffmc) + (0.0898 * ffmc) +
+           (0.1414 * ffmc) + (-0.1025 * ffmc) + (-0.2678 * ffmc) + (0.1665 * ffmc) + (-0.0581 * ffmc) +
+           (0.0435 * ffmc) + (0.5070 * windspeed);
+}
+
+function calculateDMC(temperature, humidity, rainfall) {
+    const dmcIncrementTable = {
+        '0-5':     {0: 0, 1: 0, 5: 1, 10: 1},
+        '5.5-10':  {0: 1, 1: 1, 5: 1, 10: 2},
+        '10.5-15': {0: 2, 5: 2, 10: 3, 15: 4},
+        '15.5-20': {0: 3, 5: 3, 10: 4, 15: 5},
+        '20.5-25': {0: 4, 5: 5, 10: 5, 15: 6},
+        '25.5-30': {0: 5, 5: 6, 10: 7, 15: 8},
+        '30.5-35': {0: 6, 5: 7, 10: 8, 15: 9},
+        '35.5-40': {0: 7, 5: 8, 10: 9, 15: 10}
+    };
+    const rainTable = {
+        '0-2': 0, '3-5': 1, '6-8': 2, '9-11': 3, '12-14': 4,
+        '15-17': 5, '18-20': 6, '21-23': 7, '24-26': 8, '27-29': 9, '30-33': 10
+    };
+
+    let increment = 0;
+    for (const range in dmcIncrementTable) {
+        const [minTemp, maxTemp] = range.split('-').map(Number);
+        if (temperature >= minTemp && temperature <= maxTemp) {
+            for (const rh in dmcIncrementTable[range]) {
+                if (humidity <= Number(rh)) {
+                    increment = dmcIncrementTable[range][rh];
+                    break;
+                }
+            }
+            break;
+        }
+    }
+
+    let rainCode = 0;
+    for (const range in rainTable) {
+        const [minRain, maxRain] = range.split('-').map(Number);
+        if (rainfall >= minRain && rainfall <= maxRain) {
+            rainCode = rainTable[range];
+            break;
+        }
+    }
+
+    return rainfall > 0 ? 6 + increment + rainCode : increment;
+}
+
+function calculateBUI(dmc) {
+    return dmc + 2;
+}
+
+function calculateFWI(isi, bui) {
+    return isi + bui;
+}
+
 function computeFWI(temp, humidity, windSpeed, ffmc) {
-    return ffmc;
+    const rainfall = 0; // no rainfall sensor
+    const isi = calculateISI(ffmc, windSpeed);
+    const dmc = calculateDMC(temp, humidity, rainfall);
+    const bui = calculateBUI(dmc);
+    return calculateFWI(isi, bui);
 }
 
 // ===================== RISK LABELS =====================
