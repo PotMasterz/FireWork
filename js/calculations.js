@@ -8,11 +8,12 @@ function getRainCode(rainfall) {
     return 4;
 }
 
-function calculateISI(ffmc, windspeed) {
-    return -0.2398 + (1.9590 * ffmc) + (-0.0713 * ffmc) + (0.0441 * ffmc) + (0.1012 * ffmc) +
-           (0.0467 * ffmc) + (-0.0848 * ffmc) + (0.1675 * ffmc) + (-0.1852 * ffmc) + (0.0898 * ffmc) +
-           (0.1414 * ffmc) + (-0.1025 * ffmc) + (-0.2678 * ffmc) + (0.1665 * ffmc) + (-0.0581 * ffmc) +
-           (0.0435 * ffmc) + (0.5070 * windspeed);
+function calculateISI(ffmc, windSpeed) {
+    // Standard Canadian FWI System ISI formula
+    const m = 147.2 * (101 - ffmc) / (59.5 + ffmc);
+    const fW = Math.exp(0.05039 * windSpeed);
+    const fF = 91.9 * Math.exp(-0.1386 * m) * (1 + Math.pow(m, 5.31) / 4.93e7);
+    return 0.208 * fW * fF;
 }
 
 function calculateDMC(temperature, humidity, rainfall) {
@@ -58,11 +59,23 @@ function calculateDMC(temperature, humidity, rainfall) {
 }
 
 function calculateBUI(dmc) {
-    return dmc + 2;
+    // Without Drought Code (DC) sensor, BUI approximates to DMC
+    return dmc;
 }
 
 function calculateFWI(isi, bui) {
-    return isi + bui;
+    // Standard Canadian FWI System formula
+    let fD;
+    if (bui <= 80) {
+        fD = 0.626 * Math.pow(bui, 0.809) + 2;
+    } else {
+        fD = 1000 / (25 + 108.64 * Math.exp(-0.023 * bui));
+    }
+    const b = 0.1 * isi * fD;
+    if (b > 1) {
+        return Math.exp(2.72 * Math.pow(0.434 * Math.log(b), 0.647));
+    }
+    return b;
 }
 
 function computeFWI(temp, humidity, windSpeed, ffmc) {
