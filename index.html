@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบติดตามไฟป่า</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<!-- Header -->
+<header class="header">
+    <div class="header-left">
+        <div class="logo">&#128293;</div>
+        <div class="header-title">
+            <h1>ระบบติดตามไฟป่า</h1>
+            <p>แดชบอร์ดเซ็นเซอร์ IoT แบบเรียลไทม์</p>
+        </div>
+    </div>
+    <div class="header-right">
+        <button class="btn-fire-sim" onclick="openFireSim()">
+            &#128293; จำลองทิศทางการลุกลามของไฟ
+        </button>
+        <div id="fire-status-badge" class="status-badge normal">
+            <span class="status-dot"></span>
+            <span id="status-text">ปกติ</span>
+        </div>
+        <div class="last-update">
+            อัปเดต: <span id="last-update-time">--</span>
+        </div>
+        <button class="btn-refresh" onclick="refreshAll()">
+            &#8635; รีเฟรช
+        </button>
+    </div>
+</header>
+
+<!-- Alarm Banner -->
+<div class="alarm-banner" id="alarm-banner">
+    <div class="alarm-text" id="alarm-text">
+        &#9888; แจ้งเตือน!
+        <span id="alarm-detail"></span>
+    </div>
+    <button class="alarm-dismiss" onclick="dismissAlarm()">&#10003; รับทราบ</button>
+</div>
+
+<!-- Main Content -->
+<div class="main">
+
+    <!-- Top Stats Row -->
+    <div class="grid-top">
+
+        <!-- Temperature -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">อุณหภูมิ</span>
+                <div class="card-icon" style="background: rgba(255,87,34,0.15); color: #ff5722;">&#127777;</div>
+            </div>
+            <div class="stat-value" id="temp-value">--<span class="stat-unit">&deg;C</span></div>
+            <div class="stat-sub" id="temp-sub">กำลังโหลด...</div>
+            <div class="alert-row">
+                <label class="toggle">
+                    <input type="checkbox" id="alert-temp-on" onchange="saveAlertSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label class="alert-label">เตือนเมื่อ ></label>
+                <input type="number" id="alert-temp-val" value="42" step="0.5"
+                       oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                <span class="unit">&deg;C</span>
+            </div>
+        </div>
+
+        <!-- Humidity -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">ความชื้น</span>
+                <div class="card-icon" style="background: rgba(33,150,243,0.15); color: #2196f3;">&#128167;</div>
+            </div>
+            <div class="stat-value" id="humi-value">--<span class="stat-unit">%</span></div>
+            <div class="stat-sub" id="humi-sub">กำลังโหลด...</div>
+            <div class="alert-row">
+                <label class="toggle">
+                    <input type="checkbox" id="alert-humi-on" onchange="saveAlertSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label class="alert-label">เตือนเมื่อ &lt;</label>
+                <input type="number" id="alert-humi-val" value="20" step="1"
+                       oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                <span class="unit">%</span>
+            </div>
+        </div>
+
+        <!-- CO2 -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">ระดับ CO2</span>
+                <div class="card-icon" style="background: rgba(156,39,176,0.15); color: #9c27b0;">&#9729;</div>
+            </div>
+            <div class="stat-value" id="co2-value">--<span class="stat-unit">ppm</span></div>
+            <div class="stat-sub" id="co2-sub">กำลังโหลด...</div>
+            <div class="alert-row">
+                <label class="toggle">
+                    <input type="checkbox" id="alert-co2-on" onchange="saveAlertSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label class="alert-label">เตือนเมื่อ ></label>
+                <input type="number" id="alert-co2-val" value="1500" step="50"
+                       oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                <span class="unit">ppm</span>
+            </div>
+        </div>
+
+        <!-- Wind Speed -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">ความเร็วลม</span>
+                <div class="card-icon" style="background: rgba(0,188,212,0.15); color: #00bcd4;">&#127744;</div>
+            </div>
+            <div class="stat-value" id="wind-value">--<span class="stat-unit">km/hr</span></div>
+            <div class="stat-sub">
+                <div class="wind-compass" id="wind-compass">
+                    <div class="wind-arrow" id="wind-arrow"></div>
+                    <div class="wind-center"></div>
+                </div>
+                <div style="text-align:center; margin-top:6px; font-size:12px; color:var(--text-muted);">
+                    ทิศทาง: <span id="wind-dir-text">--</span>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Middle Row -->
+    <div class="grid-middle">
+
+        <!-- FFMC -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">ดัชนีโอกาสในการเกิดไฟป่า (FFMC)</span>
+            </div>
+            <div class="ffmc-section">
+                <div class="ffmc-value-display" id="ffmc-value">--</div>
+                <div class="ffmc-label">ดัชนีโอกาสในการเกิดไฟป่า</div>
+                <div class="ffmc-bar">
+                    <div class="ffmc-marker" id="ffmc-marker" style="left: 0%"></div>
+                </div>
+                <div class="ffmc-scale">
+                    <span>86 - ต่ำ</span>
+                    <span>89</span>
+                    <span>92 - ปานกลาง</span>
+                    <span>94 - สูง</span>
+                    <span>96+ - วิกฤต</span>
+                </div>
+                <div class="ffmc-risk-label" id="ffmc-risk">--</div>
+                <div class="alert-row" style="justify-content:center;">
+                    <label class="toggle">
+                        <input type="checkbox" id="alert-ffmc-on" onchange="saveAlertSettings()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label class="alert-label">เตือนเมื่อ ></label>
+                    <input type="number" id="alert-ffmc-val" value="95" step="0.5"
+                           oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                </div>
+            </div>
+        </div>
+
+        <!-- FWI -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">ดัชนีความรุนแรงในการลุกลามของไฟป่า (FWI)</span>
+            </div>
+            <div class="fwi-section">
+                <div class="fwi-value-display" id="fwi-value">--</div>
+                <div class="fwi-label">Fire Weather Index</div>
+                <div class="fwi-bar">
+                    <div class="ffmc-marker" id="fwi-marker" style="left: 0%"></div>
+                </div>
+                <div class="ffmc-scale">
+                    <span>0 - ต่ำ</span>
+                    <span>50</span>
+                    <span>100 - ปานกลาง</span>
+                    <span>150 - สูง</span>
+                    <span>200+ - วิกฤต</span>
+                </div>
+                <div class="ffmc-risk-label" id="fwi-risk">--</div>
+                <div class="alert-row" style="justify-content:center;">
+                    <label class="toggle">
+                        <input type="checkbox" id="alert-fwi-on" onchange="saveAlertSettings()">
+                        <span class="toggle-slider"></span>
+                    </label>
+                    <label class="alert-label">เตือนเมื่อ ></label>
+                    <input type="number" id="alert-fwi-val" value="50" step="5"
+                           oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                </div>
+            </div>
+        </div>
+
+        <!-- Fire Detection -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">การตรวจจับไฟ</span>
+            </div>
+            <div class="fire-status">
+                <div class="fire-icon-large" id="fire-icon">&#9989;</div>
+                <div class="fire-status-text" id="fire-text">ไม่พบไฟ</div>
+                <div style="font-size: 13px; color: var(--text-secondary);" id="fire-level">ระดับ: ปกติ</div>
+            </div>
+            <div class="camera-feed" id="camera-feed">
+                <span class="camera-label">&#128247; ภาพล่าสุด</span>
+                <img id="camera-img" src="" alt="Camera feed"
+                     onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22240%22><rect fill=%22%231e2d3a%22 width=%22400%22 height=%22240%22/><text x=%2250%25%22 y=%2250%25%22 fill=%22%235c6f7e%22 text-anchor=%22middle%22 font-size=%2214%22>No Image Available</text></svg>'">
+            </div>
+            <div style="text-align: center; margin-top: 8px;">
+                <span style="font-size: 12px; color: var(--text-muted);" id="camera-time">--</span>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- History -->
+    <div class="full-width">
+        <div class="section-title">ข้อมูลย้อนหลัง</div>
+        <div class="card">
+            <div class="history-controls">
+                <label>จาก:</label>
+                <input type="date" id="history-start">
+                <label>ถึง:</label>
+                <input type="date" id="history-end">
+                <button class="btn-fetch" onclick="fetchHistory()" id="btn-history">โหลดข้อมูล</button>
+                <span class="data-count" id="history-count">0 รายการ</span>
+            </div>
+
+            <div class="grid-charts">
+                <div>
+                    <div class="card-title" style="margin-bottom:8px;">อุณหภูมิ & ความชื้น</div>
+                    <div class="chart-container">
+                        <canvas id="chart-temp-humi"></canvas>
+                    </div>
+                </div>
+                <div>
+                    <div class="card-title" style="margin-bottom:8px;">CO2 & ความเร็วลม</div>
+                    <div class="chart-container">
+                        <canvas id="chart-co2-wind"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Row -->
+    <div class="grid-bottom">
+
+        <!-- Image -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">คลังภาพ</span>
+                <span class="data-count" id="gallery-count">0 ภาพ</span>
+            </div>
+            <div class="gallery-grid" id="gallery-grid">
+                <div class="loading-overlay">
+                    <div class="loading-spinner"></div>
+                    กำลังโหลดภาพ...
+                </div>
+            </div>
+        </div>
+
+        <!-- Battery -->
+        <div class="card">
+            <div class="card-header">
+                <span class="card-title">แบตเตอรี่ & โซลาร์เซลล์</span>
+                <a href="https://iot.varee.ac.th/fire/voltage.php" target="_blank"
+                   style="font-size:12px; color: var(--accent-blue); text-decoration:none;">
+                    เปิดหน้าเต็ม &#8599;
+                </a>
+            </div>
+            <div class="alert-row" style="margin-top:0; padding-top:0; border-top:none; margin-bottom:12px;">
+                <label class="toggle">
+                    <input type="checkbox" id="alert-batt-on" onchange="saveAlertSettings()">
+                    <span class="toggle-slider"></span>
+                </label>
+                <label class="alert-label">เตือนเมื่อแบตต่ำกว่า</label>
+                <input type="number" id="alert-batt-val" value="20" step="5" min="0" max="100"
+                       oninput="saveAlertSettings()" onchange="saveAlertSettings()">
+                <span class="unit">%</span>
+            </div>
+            <iframe class="voltage-frame" src="https://iot.varee.ac.th/fire/voltage.php"
+                    frameborder="0" loading="lazy"></iframe>
+        </div>
+
+    </div>
+
+</div>
+
+<!-- Lightbox -->
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+    <img id="lightbox-img" src="" alt="Full image">
+</div>
+
+<!-- JavaScript -->
+<script src="js/config.js"></script>
+<script src="js/calculations.js"></script>
+<script src="js/alerts.js"></script>
+<script src="js/gallery.js"></script>
+<script src="js/charts.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/api.js"></script>
+<script src="js/main.js"></script>
+
+</body>
+</html>
+<!-- Copyright (c) 2026 Lee Zhen Yu Lee
+Varee Chiangmai School
+
+This software and associated files are the exclusive property of Lee Zhen Yu Lee.
+No part of this code may be copied, modified, distributed, or used
+without explicit written permission from the author.
+All rights reserved. -->
